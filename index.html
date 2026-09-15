@@ -1146,51 +1146,63 @@
         }
 
         function loadSummaryData() {
-            const selectedDate = document.getElementById('summary-date').value;
+            const dateInput = document.getElementById('summary-date').value;
+            if (!dateInput) return; 
+
+            // dateInput is 'YYYY-MM-DD'
+            // Filter allBills array directly in JS (Complies with Rule 2: Fetch all, filter locally)
+            const dailyTransactions = allBills.filter(tx => {
+                if (!tx.timestamp) return false;
+                try {
+                    const txDate = new Date(tx.timestamp);
+                    // Standardize local comparison
+                    const localTxDateStr = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}-${String(txDate.getDate()).padStart(2, '0')}`;
+                    return localTxDateStr === dateInput;
+                } catch(e) { return false; }
+            });
             
-            // 1. กรองบิลเฉพาะวันที่เลือก
-            let filteredBills = bills.filter(b => b.date === selectedDate);
+            let totalRevenue = 0;
+            let totalCash = 0;
+            let totalPromptpay = 0;
+            let totalItemsSold = 0;
+            const totalBills = dailyTransactions.length;
+            
+            const itemMap = {}; 
 
-            // 2. แปลง (วันที่ + เวลา) เป็นตัวเลขลำดับ YYYYMMDDHHMMSS โดยตรง
-            const getBillTimeValue = (bill) => {
-                if (!bill) return 0;
-                const datePart = (bill.date || '').replace(/-/g, ''); // "2026-09-16" -> "20260916"
-                const timeParts = (bill.time || '00:00:00').split(':');
-                const hh = String(timeParts[0] || '00').padStart(2, '0');
-                const mm = String(timeParts[1] || '00').padStart(2, '0');
-                const ss = String(timeParts[2] || '00').padStart(2, '0');
+            dailyTransactions.forEach(tx => {
+                totalRevenue += tx.total;
                 
-                return Number(`${datePart}${hh}${mm}${ss}`); // เช่น 20260916012829
-            };
-
-            // 3. เรียงลำดับจาก เวลาใหม่สุด -> เก่าสุด (ไม่สนใจคิว ไม่สนใจเลขบิล)
-            filteredBills.sort((a, b) => getBillTimeValue(b) - getBillTimeValue(a));
-
-            let totalRev = 0, totalCash = 0, totalPromptpay = 0, totalItems = 0;
-            const itemMap = {};
-
-            filteredBills.forEach(b => {
-                totalRev += b.total || 0;
-                if (b.paymentMethod === 'พร้อมเพย์') totalPromptpay += b.total || 0;
-                else totalCash += b.total || 0;
-
-                (b.items || []).forEach(i => {
-                    totalItems += i.qty || 0;
-                    if (!itemMap[i.name]) itemMap[i.name] = { name: i.name, qty: 0, total: 0 };
-                    itemMap[i.name].qty += i.qty;
-                    itemMap[i.name].total += i.total;
+                if (tx.paymentMethod === 'พร้อมเพย์') {
+                    totalPromptpay += tx.total;
+                } else {
+                    totalCash += tx.total;
+                }
+                
+                tx.items.forEach(item => {
+                    totalItemsSold += item.qty;
+                    
+                    if (!itemMap[item.name]) {
+                        itemMap[item.name] = {
+                            name: item.name,
+                            qty: 0,
+                            total: 0
+                        };
+                    }
+                    itemMap[item.name].qty += item.qty;
+                    itemMap[item.name].total += item.total;
                 });
             });
 
-            document.getElementById('sum-total-revenue').textContent = formatCurrency(totalRev);
+            document.getElementById('sum-total-revenue').textContent = formatCurrency(totalRevenue);
             document.getElementById('sum-total-cash').textContent = formatCurrency(totalCash);
             document.getElementById('sum-total-promptpay').textContent = formatCurrency(totalPromptpay);
-            document.getElementById('sum-total-bills').textContent = filteredBills.length;
-            document.getElementById('sum-total-items').textContent = totalItems;
+            document.getElementById('sum-total-bills').textContent = totalBills;
+            document.getElementById('sum-total-items').textContent = totalItemsSold;
 
-            const itemsArray = Object.values(itemMap).sort((a, b) => b.qty - a.qty);
+            const itemsArray = Object.keys(itemMap).map(name => itemMap[name]).sort((a, b) => b.qty - a.qty);
+
             renderSummaryItems(itemsArray);
-            renderSummaryBills(filteredBills);
+            renderSummaryBills(dailyTransactions);
             renderChart(itemsArray);
         }
 
