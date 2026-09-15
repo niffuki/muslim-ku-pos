@@ -778,23 +778,26 @@
             // 1. กรองบิลเฉพาะวันที่เลือก
             let filteredBills = bills.filter(b => b.date === selectedDate);
 
-            // 2. เรียงลำดับประวัติการขายตามเวลาจริง (เวลาล่าสุดอยู่บนสุดเสมอ)
-            filteredBills.sort((a, b) => {
-                const getTimeValue = (bill) => {
-                    if (bill.createdAt && bill.createdAt.seconds) {
-                        return bill.createdAt.seconds; // ใช้ Timestamp จริงจาก Firebase
-                    }
-                    return bill.time || ''; // สำรองด้วยเวลาสตริง HH:mm:ss
-                };
-
-                const valA = getTimeValue(a);
-                const valB = getTimeValue(b);
-
-                if (typeof valA === 'number' && typeof valB === 'number') {
-                    return valB - valA; // เรียงลำดับจากมากไปน้อย (ล่าสุดอยู่บนสุด)
+            // 2. แปลงเวลาของทุกบิลให้เป็น ตัวเลข Timestamp เสมอ (แก้ปัญหารูปแบบเวลาไม่ตรงกัน)
+            const getBillTimestamp = (bill) => {
+                // กรณีมี Timestamp จาก Firebase
+                if (bill.createdAt && typeof bill.createdAt.seconds === 'number') {
+                    return bill.createdAt.seconds * 1000;
                 }
-                return String(valB).localeCompare(String(valA));
-            });
+                // กรณีไม่มี Timestamp ให้แปลงจาก date + time (เช่น "2026-09-16" + "01:17")
+                if (bill.date && bill.time) {
+                    let timeStr = bill.time.trim();
+                    if (timeStr.split(':').length === 2) timeStr += ':00'; // เติมวินาทีให้สมบูรณ์
+                    const parsedDate = new Date(`${bill.date}T${timeStr}`);
+                    if (!isNaN(parsedDate.getTime())) {
+                        return parsedDate.getTime();
+                    }
+                }
+                return 0;
+            };
+
+            // 3. เรียงจาก มากไปน้อย (เวลาล่าสุดขึ้นก่อนเสมอ)
+            filteredBills.sort((a, b) => getBillTimestamp(b) - getBillTimestamp(a));
 
             let totalRev = 0, totalCash = 0, totalPromptpay = 0, totalItems = 0;
             const itemMap = {};
