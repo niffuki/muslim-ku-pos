@@ -86,13 +86,7 @@
 
                 <div class="p-4 border-t border-gray-200 bg-gray-50 shrink-0 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div class="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
-                        <div class="flex items-center gap-2">
-                            <span class="text-gray-600 font-medium">คิวที่ (Queue):</span>
-                            <label class="inline-flex items-center text-xs text-gray-500 cursor-pointer select-none">
-                                <input type="checkbox" id="no-queue-checkbox" onchange="toggleNoQueue(this.checked)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-1">
-                                ไม่ใช้คิว
-                            </label>
-                        </div>
+                        <span class="text-gray-600 font-medium">คิวที่ (Queue):</span>
                         <input type="number" id="queue-number" min="1" max="50" value="1" class="w-20 px-2 py-1 border border-gray-300 rounded text-center font-bold text-blue-600 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="flex justify-between mb-2 text-gray-600">
@@ -416,18 +410,6 @@
             document.getElementById('cash-received').addEventListener('input', calculateChange);
         }
 
-        function toggleNoQueue(isNoQueue) {
-            const queueInput = document.getElementById('queue-number');
-            queueInput.disabled = isNoQueue;
-            if (isNoQueue) {
-                queueInput.classList.add('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
-                queueInput.classList.remove('bg-white', 'text-blue-600');
-            } else {
-                queueInput.classList.remove('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
-                queueInput.classList.add('bg-white', 'text-blue-600');
-            }
-        }
-
         function formatCurrency(amount) {
             return '฿' + parseFloat(amount || 0).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         }
@@ -634,9 +616,8 @@
                 change = cashReceived - currentCheckoutTotal;
             }
 
-            const isNoQueue = document.getElementById('no-queue-checkbox').checked;
             const queueInput = document.getElementById('queue-number');
-            let queueNo = isNoQueue ? "-" : (parseInt(queueInput.value) || 1);
+            let queueNo = parseInt(queueInput.value) || 1;
 
             const now = new Date();
             const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -660,11 +641,8 @@
                 renderCart();
                 closeModal('modal-checkout');
 
-                if (!isNoQueue) {
-                    let currentQueue = parseInt(queueInput.value) || 1;
-                    currentQueue = currentQueue >= 50 ? 1 : currentQueue + 1;
-                    queueInput.value = currentQueue;
-                }
+                queueNo = queueNo >= 50 ? 1 : queueNo + 1;
+                queueInput.value = queueNo;
 
                 showToast(`ชำระเงินสำเร็จ ${formatCurrency(currentCheckoutTotal)}`, 'success');
             } catch (error) {
@@ -806,10 +784,10 @@
                 if (bill.createdAt && typeof bill.createdAt.seconds === 'number') {
                     return bill.createdAt.seconds * 1000;
                 }
-                // กรณีไม่มี Timestamp ให้แปลงจาก date + time
+                // กรณีไม่มี Timestamp ให้แปลงจาก date + time (เช่น "2026-09-16" + "01:17")
                 if (bill.date && bill.time) {
                     let timeStr = bill.time.trim();
-                    if (timeStr.split(':').length === 2) timeStr += ':00';
+                    if (timeStr.split(':').length === 2) timeStr += ':00'; // เติมวินาทีให้สมบูรณ์
                     const parsedDate = new Date(`${bill.date}T${timeStr}`);
                     if (!isNaN(parsedDate.getTime())) {
                         return parsedDate.getTime();
@@ -896,12 +874,10 @@
                 });
                 itemsListHtml += '</ul>';
 
-                const queueText = (b.queue && b.queue !== '-') ? `คิว ${b.queue}` : 'ไม่ใช้คิว';
-
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-1 border-b border-dashed border-gray-200 pb-2">
                         <div class="flex items-center gap-2">
-                            <span class="font-bold text-gray-700">${queueText}</span>
+                            <span class="font-bold text-gray-700">คิว ${b.queue || '-'}</span>
                             <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-medium">${b.paymentMethod || 'เงินสด'}</span>
                         </div>
                         <div class="flex items-center gap-2">
@@ -926,11 +902,9 @@
             const bill = bills.find(b => b.id === billId);
             if (!bill) return;
 
-            const queueText = (bill.queue && bill.queue !== '-') ? `คิวที่ <b>${bill.queue}</b>` : '<b>ไม่ใช้คิว</b>';
-
             customConfirm(
                 "ยืนยันการลบบิล", 
-                `คุณต้องการลบบิล${queueText} (เวลา ${bill.time || ''} - ยอด ${formatCurrency(bill.total)}) ใช่หรือไม่?`, 
+                `คุณต้องการลบบิลคิวที่ <b>${bill.queue || '-'}</b> (เวลา ${bill.time || ''} - ยอด ${formatCurrency(bill.total)}) ใช่หรือไม่?`, 
                 async () => {
                     try {
                         await db.collection("bills").doc(billId).delete();
