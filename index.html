@@ -88,12 +88,12 @@
                     <div class="flex justify-between items-center mb-3 pb-3 border-b border-gray-200">
                         <div class="flex items-center gap-2">
                             <span class="text-gray-600 font-medium">คิวที่ (Queue):</span>
-                            <label class="inline-flex items-center text-xs text-gray-500 cursor-pointer select-none">
-                                <input type="checkbox" id="no-queue-checkbox" onchange="toggleNoQueue(this.checked)" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mr-1">
-                                ไม่ใช้คิว
-                            </label>
+                            <!-- แก้ไข checklist เป็นปุ่มแทนให้กดง่ายขึ้น -->
+                            <button type="button" id="btn-no-queue" onclick="toggleNoQueue()" class="px-2.5 py-1 text-xs font-semibold rounded-md border transition-all bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200 active:scale-95 select-none shadow-sm flex items-center gap-1">
+                                <i class="fas fa-ban"></i> ไม่ใช้คิว
+                            </button>
                         </div>
-                        <input type="number" id="queue-number" min="1" max="50" value="1" class="w-20 px-2 py-1 border border-gray-300 rounded text-center font-bold text-blue-600 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="number" id="queue-number" min="1" max="50" value="1" class="w-20 px-2 py-1 border border-gray-300 rounded text-center font-bold text-blue-600 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors">
                     </div>
                     <div class="flex justify-between mb-2 text-gray-600">
                         <span>จำนวนชิ้น:</span>
@@ -374,6 +374,7 @@
         let currentCheckoutTotal = 0;
         let currentPaymentMethod = 'cash';
         let salesChartInstance = null;
+        let isNoQueue = false; // สถานะใช้งานคิว
 
         function initApp() {
             document.getElementById('summary-date').value = getTodayDateStr();
@@ -416,15 +417,33 @@
             document.getElementById('cash-received').addEventListener('input', calculateChange);
         }
 
-        function toggleNoQueue(isNoQueue) {
+        /* --- ฟังก์ชันสลับการใช้งานคิว (ใช้ ปุ่มกด แทน Checkbox) --- */
+        function toggleNoQueue(forcedState) {
+            if (typeof forcedState === 'boolean') {
+                isNoQueue = forcedState;
+            } else {
+                isNoQueue = !isNoQueue;
+            }
+
             const queueInput = document.getElementById('queue-number');
-            queueInput.disabled = isNoQueue;
+            const btnNoQueue = document.getElementById('btn-no-queue');
+
             if (isNoQueue) {
+                queueInput.disabled = true;
                 queueInput.classList.add('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
                 queueInput.classList.remove('bg-white', 'text-blue-600');
+
+                // ปรับสไตล์ปุ่มเมื่อเปิดโหมด "ไม่ใช้คิว"
+                btnNoQueue.className = 'px-2.5 py-1 text-xs font-semibold rounded-md transition-all bg-red-500 text-white border border-red-600 shadow-sm active:scale-95 select-none flex items-center gap-1 hover:bg-red-600';
+                btnNoQueue.innerHTML = '<i class="fas fa-times-circle"></i> ไม่ใช้คิว (เปิดอยู่)';
             } else {
+                queueInput.disabled = false;
                 queueInput.classList.remove('bg-gray-100', 'text-gray-400', 'cursor-not-allowed');
                 queueInput.classList.add('bg-white', 'text-blue-600');
+
+                // ปรับสไตล์ปุ่มปกติ
+                btnNoQueue.className = 'px-2.5 py-1 text-xs font-semibold rounded-md border transition-all bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200 active:scale-95 select-none shadow-sm flex items-center gap-1';
+                btnNoQueue.innerHTML = '<i class="fas fa-ban"></i> ไม่ใช้คิว';
             }
         }
 
@@ -634,7 +653,6 @@
                 change = cashReceived - currentCheckoutTotal;
             }
 
-            const isNoQueue = document.getElementById('no-queue-checkbox').checked;
             const queueInput = document.getElementById('queue-number');
             let queueNo = isNoQueue ? "-" : (parseInt(queueInput.value) || 1);
 
@@ -802,11 +820,9 @@
 
             // 2. แปลงเวลาของทุกบิลให้เป็น ตัวเลข Timestamp เสมอ (แก้ปัญหารูปแบบเวลาไม่ตรงกัน)
             const getBillTimestamp = (bill) => {
-                // กรณีมี Timestamp จาก Firebase
                 if (bill.createdAt && typeof bill.createdAt.seconds === 'number') {
                     return bill.createdAt.seconds * 1000;
                 }
-                // กรณีไม่มี Timestamp ให้แปลงจาก date + time
                 if (bill.date && bill.time) {
                     let timeStr = bill.time.trim();
                     if (timeStr.split(':').length === 2) timeStr += ':00';
@@ -921,7 +937,6 @@
             });
         }
 
-        /* --- ฟังก์ชันสำหรับลบบิลประวัติการขาย --- */
         function deleteBill(billId) {
             const bill = bills.find(b => b.id === billId);
             if (!bill) return;
