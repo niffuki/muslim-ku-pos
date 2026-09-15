@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Muslim KU POS</title>
+    <title>Muslim KU POS - Realtime Cloud</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
@@ -58,15 +58,32 @@
         .toast-exit {
             animation: toastSlideOut 0.3s ease-in forwards;
         }
+        
+        /* Pulse Animation for Sync Status */
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        .sync-active {
+            animation: pulse-green 2s infinite;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-gray-800">
 
     <!-- Top Navigation Bar -->
     <header class="bg-blue-600 text-white shadow-md flex justify-between items-center px-6 py-3 z-10 shrink-0">
-        <div class="flex items-center gap-2">
-            <i class="fas fa-store text-2xl"></i>
-            <h1 class="text-xl font-bold tracking-tight">Muslim KU POS</h1>
+        <div class="flex items-center gap-4">
+            <div class="flex items-center gap-2">
+                <i class="fas fa-store text-2xl"></i>
+                <h1 class="text-xl font-bold tracking-tight">Muslim KU POS</h1>
+            </div>
+            <!-- Sync Status Indicator -->
+            <div id="sync-status" class="hidden items-center gap-2 px-3 py-1 bg-blue-700/50 rounded-full text-xs font-medium border border-blue-500">
+                <div class="w-2 h-2 rounded-full bg-green-400 sync-active"></div>
+                Cloud Sync Online
+            </div>
         </div>
         <nav class="flex gap-2">
             <button onclick="switchTab('pos')" id="tab-pos" class="px-4 py-2 rounded-md bg-blue-700 font-medium transition-colors hover:bg-blue-800">
@@ -97,6 +114,10 @@
 
                 <div id="pos-product-grid" class="flex-1 overflow-y-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 content-start pb-20">
                     <!-- Products will be injected here by JS -->
+                    <div class="col-span-full h-full flex flex-col items-center justify-center text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-4xl mb-4"></i>
+                        <p>กำลังโหลดรายการสินค้า...</p>
+                    </div>
                 </div>
             </div>
 
@@ -146,7 +167,7 @@
             <div class="p-6 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800">จัดการสินค้า</h2>
-                    <p class="text-sm text-gray-500">เพิ่ม ลบ และแก้ไขข้อมูลสินค้า</p>
+                    <p class="text-sm text-gray-500">เพิ่ม ลบ และแก้ไขข้อมูลสินค้า (ซิงค์แบบ Real-time)</p>
                 </div>
                 <button onclick="openAddProductModal()" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors">
                     <i class="fas fa-plus mr-1"></i> เพิ่มสินค้าใหม่
@@ -182,10 +203,10 @@
             <div class="p-6 border-b border-gray-200 bg-white shrink-0 flex justify-between items-center">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800">สรุปยอดขายประจำวัน</h2>
-                    <p class="text-sm text-gray-500">ดูยอดขายและรายการสินค้าที่ขายได้ในแต่ละวัน (ซิงค์จาก Google Sheets)</p>
+                    <p class="text-sm text-gray-500">ดูยอดขายและรายการสินค้าที่ขายได้ในแต่ละวัน (อัปเดตอัตโนมัติ)</p>
                 </div>
                 <button onclick="downloadDailyCSV()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 px-4 rounded-lg shadow-sm transition-colors flex items-center gap-2">
-                    <i class="fas fa-file-csv text-lg"></i> ดาวน์โหลด CSV (Excel)
+                    <i class="fas fa-file-csv text-lg"></i> ดาวน์โหลด CSV
                 </button>
             </div>
             
@@ -274,6 +295,7 @@
 
     <!-- ===== MODALS ===== -->
     
+    <!-- Product Modal -->
     <div id="modal-product" class="fixed inset-0 z-50 hidden items-center justify-center">
         <div class="absolute inset-0 bg-black/50 backdrop-blur-sm modal-overlay" onclick="closeModal('modal-product')"></div>
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-md relative z-10 modal-content overflow-hidden">
@@ -318,7 +340,7 @@
                     
                     <div class="mb-6">
                         <label class="block text-gray-700 text-sm font-bold mb-2">สีสัญลักษณ์สำรอง (กรณีไม่มีรูป)</label>
-                        <div class="flex gap-2" id="color-picker-container">
+                        <div class="flex gap-2 flex-wrap" id="color-picker-container">
                             <!-- Colors injected by JS -->
                         </div>
                         <input type="hidden" id="prod-color" value="bg-blue-500">
@@ -326,7 +348,7 @@
 
                     <div class="flex items-center justify-end gap-3 pt-4 border-t border-gray-100">
                         <button type="button" onclick="closeModal('modal-product')" class="px-4 py-2 rounded-lg text-gray-600 font-medium hover:bg-gray-100 transition-colors">ยกเลิก</button>
-                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-colors">
+                        <button id="btn-save-product" type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow transition-colors flex items-center">
                             บันทึกข้อมูล
                         </button>
                     </div>
@@ -375,7 +397,7 @@
                 </div>
 
                 <div class="flex flex-col gap-3">
-                    <button type="button" onclick="processCheckout()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow transition-colors text-lg">
+                    <button id="btn-confirm-checkout" type="button" onclick="processCheckout()" class="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg shadow transition-colors text-lg flex justify-center items-center">
                         ยืนยันทำรายการ
                     </button>
                     <button type="button" onclick="closeModal('modal-checkout')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 px-4 rounded-lg transition-colors">
@@ -407,29 +429,28 @@
     <div id="toast-container" class="fixed top-20 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- ===== JAVASCRIPT ===== -->
-    <script>
-        /* --- Configuration --- */
-        const GOOGLE_SHEET_API_URL = "https://script.google.com/macros/s/AKfycbzEh4anvi9Qei1VBOPKlojCqpgDev8zr2QZfseY9_evlsNQD5Hn58eBV-QuNsSobYWQ/exec";
+    <script type="module">
+        // Firebase Configuration & Imports (v11.6.1)
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, deleteDoc, onSnapshot, collection, addDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Access environment variables securely
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-pos-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
         
-        const defaultProducts = [
-            { id: 'p1', name: 'น้ำดื่ม', price: 10, color: 'bg-blue-400', image: '' },
-            { id: 'p2', name: 'กาแฟเย็น', price: 45, color: 'bg-amber-700', image: '' },
-            { id: 'p3', name: 'ชานมไข่มุก', price: 50, color: 'bg-orange-300', image: '' },
-            { id: 'p4', name: 'ข้าวผัดหมู', price: 60, color: 'bg-yellow-500', image: '' },
-            { id: 'p5', name: 'ขนมปังปิ้ง', price: 20, color: 'bg-yellow-700', image: '' },
-            { id: 'p6', name: 'สลัดผัก', price: 80, color: 'bg-green-500', image: '' },
-        ];
+        // Setup Firebase App
+        let app, db, auth;
+        if (firebaseConfig) {
+            app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+            auth = getAuth(app);
+        }
 
-        const colorPalette = [
-            'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500', 
-            'bg-lime-500', 'bg-green-500', 'bg-emerald-500', 'bg-teal-500',
-            'bg-cyan-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500',
-            'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500'
-        ];
-
+        /* --- Application State --- */
         let products = [];
         let cart = []; 
-        let cloudSummaryData = { bills: [], itemsSummary: {}, dailyTotals: {} }; 
+        let allBills = []; 
         let currentTab = 'pos';
         let alertCallback = null;
         
@@ -437,17 +458,134 @@
         let currentPaymentMethod = 'cash';
         let salesChartInstance = null; 
 
+        const colorPalette = [
+            'bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-yellow-500', 
+            'bg-lime-500', 'bg-green-500', 'bg-emerald-500', 'bg-teal-500',
+            'bg-cyan-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500',
+            'bg-violet-500', 'bg-purple-500', 'bg-fuchsia-500', 'bg-pink-500',
+            'bg-gray-800'
+        ];
+
+        // Default products if database is completely empty
+        const defaultProductsData = [
+            { name: 'น้ำดื่ม', price: 10, color: 'bg-blue-400', image: '' },
+            { name: 'กาแฟเย็น', price: 45, color: 'bg-amber-700', image: '' },
+            { name: 'ชานมไข่มุก', price: 50, color: 'bg-orange-300', image: '' },
+            { name: 'ข้าวผัดหมู', price: 60, color: 'bg-yellow-500', image: '' }
+        ];
+
+        /* --- Initialization Phase --- */
         async function initApp() {
-            await loadDataFromServer();
             setupEventListeners();
-            
             document.getElementById('summary-date').value = getTodayDateStr();
-            
-            renderProductsInPOS();
-            renderProductsTable();
-            renderCart();
             renderColorPicker();
+
+            if (!firebaseConfig) {
+                console.error("Firebase is not configured correctly in this environment.");
+                customAlert("ข้อผิดพลาด", "ไม่สามารถเชื่อมต่อฐานข้อมูลได้", "error");
+                return;
+            }
+
+            try {
+                // Rule 3: Auth Before Queries
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                // Show Sync Status
+                document.getElementById('sync-status').classList.remove('hidden');
+                document.getElementById('sync-status').classList.add('flex');
+
+                // Start Listening to Real-time data
+                setupRealtimeListeners();
+            } catch (error) {
+                console.error("Auth failed:", error);
+                customAlert("Authentication Error", "การเข้าสู่ระบบล้มเหลว กรุณารีเฟรชหน้าเว็บ", "error");
+            }
         }
+
+        /* --- Real-time Firestore Listeners --- */
+        // Rule 1: Strict Paths
+        function getProductsCollectionRef() {
+            return collection(db, 'artifacts', appId, 'public', 'data', 'products');
+        }
+        function getBillsCollectionRef() {
+            return collection(db, 'artifacts', appId, 'public', 'data', 'bills');
+        }
+
+        function setupRealtimeListeners() {
+            // Listen to Products (Rule 2: No Complex Queries, fetch all)
+            onSnapshot(getProductsCollectionRef(), (snapshot) => {
+                const fetchedProducts = [];
+                snapshot.forEach(doc => {
+                    fetchedProducts.push({ id: doc.id, ...doc.data() });
+                });
+
+                products = fetchedProducts;
+                
+                // Initialize default products if completely empty
+                if (products.length === 0 && snapshot.metadata.fromCache === false) {
+                    seedDefaultProducts();
+                }
+
+                // Update UI based on new data
+                renderProductsInPOS(document.getElementById('pos-search').value);
+                renderProductsTable(document.getElementById('manage-search').value);
+                
+                // Verify cart items still exist/update their prices conceptually (Optional safety check)
+                validateCartItems();
+            }, (error) => {
+                console.error("Products Sync Error:", error);
+            });
+
+            // Listen to Bills/Summary
+            onSnapshot(getBillsCollectionRef(), (snapshot) => {
+                const fetchedBills = [];
+                snapshot.forEach(doc => {
+                    fetchedBills.push({ id: doc.id, ...doc.data() });
+                });
+                
+                allBills = fetchedBills;
+                
+                if (currentTab === 'summary') {
+                    loadSummaryData();
+                }
+            }, (error) => {
+                console.error("Bills Sync Error:", error);
+            });
+        }
+
+        // Add default products if DB is blank
+        async function seedDefaultProducts() {
+            for (const prod of defaultProductsData) {
+                try {
+                    await addDoc(getProductsCollectionRef(), prod);
+                } catch(e) { console.error(e); }
+            }
+        }
+
+        /* --- Core POS & UI Functions --- */
+        // Attach these functions to window object so inline HTML onclick handlers can find them
+        window.switchTab = switchTab;
+        window.addToCart = addToCart;
+        window.updateCartQuantity = updateCartQuantity;
+        window.removeFromCart = removeFromCart;
+        window.clearCart = clearCart;
+        window.openCheckoutModal = openCheckoutModal;
+        window.setPaymentMethod = setPaymentMethod;
+        window.processCheckout = processCheckout;
+        window.closeModal = closeModal;
+        window.openAddProductModal = openAddProductModal;
+        window.saveProduct = saveProduct;
+        window.editProduct = editProduct;
+        window.deleteProduct = deleteProduct;
+        window.handleImageUpload = handleImageUpload;
+        window.loadSummaryData = loadSummaryData;
+        window.downloadDailyCSV = downloadDailyCSV;
+        window.closeAlertModal = closeAlertModal;
+        window.selectColor = selectColor;
 
         function setupEventListeners() {
             document.getElementById('pos-search').addEventListener('input', (e) => {
@@ -462,56 +600,8 @@
             });
         }
         
-        async function loadDataFromServer() {
-            if (!GOOGLE_SHEET_API_URL || GOOGLE_SHEET_API_URL.includes("ใส่_URL_WEB_APP")) {
-                loadProductsFromStorage();
-                return;
-            }
-
-            try {
-                const response = await fetch(GOOGLE_SHEET_API_URL);
-                const result = await response.json();
-                
-                // โหลดสินค้า
-                if (result && result.products && result.products.length > 0) {
-                    products = result.products;
-                    localStorage.setItem('pos_products', JSON.stringify(products));
-                } else {
-                    loadProductsFromStorage();
-                }
-
-                // โหลดข้อมูลสรุปยอดขายจาก Google Sheets กลาง
-                if (result && result.summary) {
-                    cloudSummaryData = result.summary;
-                }
-            } catch (error) {
-                console.error("ไม่สามารถดึงข้อมูลจากเซิร์ฟเวอร์ได้:", error);
-                loadProductsFromStorage();
-            }
-        }
-
-        function loadProductsFromStorage() {
-            const storedProducts = localStorage.getItem('pos_products');
-            if (storedProducts) {
-                try {
-                    products = JSON.parse(storedProducts);
-                } catch(e) { products = defaultProducts; }
-            } else {
-                products = [...defaultProducts];
-                saveProductsToStorage();
-            }
-        }
-
-        function saveProductsToStorage() {
-            localStorage.setItem('pos_products', JSON.stringify(products));
-        }
-        
         function formatCurrency(amount) {
             return '฿' + parseFloat(amount).toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-
-        function generateId() {
-            return 'id_' + Math.random().toString(36).substr(2, 9) + Date.now().toString(36);
         }
 
         function getTodayDateStr() {
@@ -522,16 +612,10 @@
             return `${year}-${month}-${day}`;
         }
         
-        function formatDateTime(dateString) {
-            const date = new Date(dateString);
-            if(isNaN(date)) return dateString;
-            return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
-        }
-        
-        async function switchTab(tabId) {
+        function switchTab(tabId) {
             currentTab = tabId;
-            
             const tabs = ['pos', 'products', 'summary'];
+            
             tabs.forEach(t => {
                 const btn = document.getElementById(`tab-${t}`);
                 const view = document.getElementById(`view-${t}`);
@@ -552,8 +636,6 @@
             });
 
             if (tabId === 'summary') {
-                // โหลดข้อมูลล่าสุดจากเซิร์ฟเวอร์ก่อนแสดงผล Summary
-                await loadDataFromServer();
                 loadSummaryData();
             } else if (tabId === 'products') {
                 renderProductsTable();
@@ -570,7 +652,7 @@
             const filteredProducts = products.filter(p => p.name.toLowerCase().includes(query));
 
             if (filteredProducts.length === 0) {
-                grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">ไม่พบสินค้าที่ค้นหา</div>`;
+                grid.innerHTML = `<div class="col-span-full text-center py-10 text-gray-400">ไม่พบสินค้าในระบบ</div>`;
                 return;
             }
 
@@ -582,7 +664,7 @@
                 card.onclick = () => addToCart(product.id);
                 
                 let mediaHtml = '';
-                if (product.image) {
+                if (product.image && product.image.trim() !== "") {
                     mediaHtml = `<div class="w-full flex-1 rounded overflow-hidden bg-gray-50 flex items-center justify-center my-1"><img src="${product.image}" class="w-full h-full object-cover"></div>`;
                 } else {
                     mediaHtml = `<div class="w-full flex-1 rounded ${bgColorClass} text-white flex items-center justify-center text-3xl font-bold my-1 shadow-inner">${product.name.charAt(0)}</div>`;
@@ -637,6 +719,24 @@
         function removeFromCart(productId) {
             cart = cart.filter(item => item.product.id !== productId);
             renderCart();
+        }
+
+        function validateCartItems() {
+            // If a product was deleted from DB by someone else, remove it from local cart
+            let cartModified = false;
+            cart = cart.filter(item => {
+                const productExists = products.find(p => p.id === item.product.id);
+                if (!productExists) {
+                    cartModified = true;
+                    return false;
+                }
+                // Optional: Update prices in cart if they changed in DB
+                item.product.price = productExists.price;
+                item.product.name = productExists.name;
+                item.total = item.quantity * item.product.price;
+                return true;
+            });
+            if (cartModified) renderCart();
         }
 
         function clearCart() {
@@ -760,92 +860,89 @@
             }
         }
 
-        async function syncDataToServer(action, data) {
-            if (!GOOGLE_SHEET_API_URL || GOOGLE_SHEET_API_URL.includes("ใส่_URL_WEB_APP")) return;
-            try {
-                await fetch(GOOGLE_SHEET_API_URL, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action: action, ...data })
-                });
-            } catch (error) {
-                console.error("Cloud Sync Error:", error);
-            }
-        }
-
         async function processCheckout() {
-            let cashReceived = 0;
-            let change = 0;
-            const paymentType = currentPaymentMethod; 
-            
-            const queueInput = document.getElementById('queue-number');
-            let currentQueue = parseInt(queueInput.value) || 1;
-            if (currentQueue < 1) currentQueue = 1;
-            if (currentQueue > 50) currentQueue = 50;
-            
-            if (paymentType === 'cash') {
-                const cashInputStr = document.getElementById('cash-received').value;
-                cashReceived = parseFloat(cashInputStr);
+            const btn = document.getElementById('btn-confirm-checkout');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> กำลังบันทึก...';
+
+            try {
+                let cashReceived = 0;
+                let change = 0;
+                const paymentType = currentPaymentMethod; 
                 
-                if (cashInputStr.trim() === '') {
-                    cashReceived = currentCheckoutTotal;
-                }
-
-                if (isNaN(cashReceived) || cashReceived < currentCheckoutTotal) {
-                    if(cashReceived !== 0) {
-                        customAlert("ข้อผิดพลาด", "จำนวนเงินที่รับมาไม่เพียงพอ", "error");
-                        return;
-                    } else {
-                         cashReceived = currentCheckoutTotal; 
+                const queueInput = document.getElementById('queue-number');
+                let currentQueue = parseInt(queueInput.value) || 1;
+                if (currentQueue < 1) currentQueue = 1;
+                if (currentQueue > 50) currentQueue = 50;
+                
+                if (paymentType === 'cash') {
+                    const cashInputStr = document.getElementById('cash-received').value;
+                    cashReceived = parseFloat(cashInputStr);
+                    
+                    if (cashInputStr.trim() === '') {
+                        cashReceived = currentCheckoutTotal;
                     }
+
+                    if (isNaN(cashReceived) || cashReceived < currentCheckoutTotal) {
+                        if(cashReceived !== 0) {
+                            customAlert("ข้อผิดพลาด", "จำนวนเงินที่รับมาไม่เพียงพอ", "error");
+                            btn.disabled = false;
+                            btn.innerHTML = 'ยืนยันทำรายการ';
+                            return;
+                        } else {
+                            cashReceived = currentCheckoutTotal; 
+                        }
+                    }
+                    change = cashReceived - currentCheckoutTotal;
+                } else {
+                    cashReceived = currentCheckoutTotal;
+                    change = 0;
                 }
-                change = cashReceived - currentCheckoutTotal;
-            } else {
-                cashReceived = currentCheckoutTotal;
-                change = 0;
-            }
 
-            const transaction = {
-                id: 'tx_' + Date.now(),
-                queue: currentQueue,
-                timestamp: new Date().toISOString(),
-                items: JSON.parse(JSON.stringify(cart)), 
-                total: currentCheckoutTotal,
-                cashReceived: cashReceived,
-                change: change,
-                paymentMethod: paymentType
-            };
-
-            // ปิด Modal ทันทีเพื่อให้ผู้ใช้งานไม่รู้สึกหน่วง
-            cart = [];
-            renderCart();
-            closeModal('modal-checkout');
-
-            currentQueue++;
-            if (currentQueue > 50) currentQueue = 1;
-            queueInput.value = currentQueue;
-
-            let msg = `ชำระเงินสำเร็จ (ยอด: ${formatCurrency(currentCheckoutTotal)})`;
-            if (paymentType === 'promptpay') {
-                msg = `รับชำระด้วยพร้อมเพย์สำเร็จ<br><span class="font-bold text-green-300">ยอด: ${formatCurrency(currentCheckoutTotal)}</span>`;
-            } else if (change > 0) {
-                msg += `<br><span class="font-bold text-lg text-yellow-300">เงินทอน: ${formatCurrency(change)}</span>`;
-            }
-            showToast(msg, 'success');
-
-            // ส่งข้อมูลไปบันทึกที่ Google Sheet แบบเบื้องหลัง (ไม่บล็อกหน้าจอ)
-            syncDataToServer('saveBill', {
-                billId: transaction.id,
-                queue: transaction.queue,
-                total: transaction.total,
-                paymentMethod: transaction.paymentMethod === 'promptpay' ? 'พร้อมเพย์' : 'เงินสด',
-                items: transaction.items.map(item => ({ 
+                // Create Transaction object matching Firestore structure
+                const itemsSnapshot = cart.map(item => ({ 
+                    productId: item.product.id,
                     name: item.product.name, 
                     qty: item.quantity,
                     total: item.total
-                }))
-            });
-    
+                }));
+
+                const newBill = {
+                    queue: currentQueue,
+                    timestamp: new Date().toISOString(), // Standardized ISO timestamp for precise querying
+                    items: itemsSnapshot, 
+                    total: currentCheckoutTotal,
+                    cashReceived: cashReceived,
+                    change: change,
+                    paymentMethod: paymentType === 'promptpay' ? 'พร้อมเพย์' : 'เงินสด'
+                };
+
+                // Save to Firestore Real-time DB
+                await addDoc(getBillsCollectionRef(), newBill);
+
+                // UI Cleanup & Notifications
+                cart = [];
+                renderCart();
+                closeModal('modal-checkout');
+
+                currentQueue++;
+                if (currentQueue > 50) currentQueue = 1;
+                queueInput.value = currentQueue;
+
+                let msg = `ชำระเงินสำเร็จ (ยอด: ${formatCurrency(currentCheckoutTotal)})`;
+                if (paymentType === 'promptpay') {
+                    msg = `รับชำระด้วยพร้อมเพย์สำเร็จ<br><span class="font-bold text-green-300">ยอด: ${formatCurrency(currentCheckoutTotal)}</span>`;
+                } else if (change > 0) {
+                    msg += `<br><span class="font-bold text-lg text-yellow-300">เงินทอน: ${formatCurrency(change)}</span>`;
+                }
+                showToast(msg, 'success');
+            } catch (error) {
+                console.error("Checkout Error:", error);
+                customAlert("เกิดข้อผิดพลาด", "ไม่สามารถบันทึกรายการได้ กรุณาลองใหม่", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'ยืนยันทำรายการ';
+            }
         }
 
         function renderProductsTable(searchQuery = '') {
@@ -866,7 +963,7 @@
                 const displayId = String(index + 1).padStart(3, '0');
                 
                 let mediaThumbnail = '';
-                if (product.image) {
+                if (product.image && product.image.trim() !== '') {
                     mediaThumbnail = `<div class="flex-shrink-0 h-10 w-10 border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center"><img src="${product.image}" class="w-full h-full object-cover"></div>`;
                 } else {
                     mediaThumbnail = `<div class="flex-shrink-0 h-10 w-10 ${product.color || 'bg-gray-400'} text-white flex items-center justify-center font-bold text-xs shadow-inner">${product.name.charAt(0)}</div>`;
@@ -874,7 +971,7 @@
 
                 tr.innerHTML = `
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        #${displayId}
+                        <span title="Firestore ID: ${product.id}">#${displayId}</span>
                     </td>
                     <td class="px-6 py-4 whitespace-nowrap">
                         <div class="flex items-center">
@@ -905,6 +1002,13 @@
         function handleImageUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
+            
+            // Check file size (rough estimate ~ 500KB)
+            if (file.size > 500 * 1024) {
+                 customAlert("รูปภาพใหญ่เกินไป", "กรุณาใช้รูปภาพขนาดไม่เกิน 500KB", "warning");
+                 event.target.value = '';
+                 return;
+            }
 
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -923,7 +1027,7 @@
             
             colorPalette.forEach(color => {
                 const div = document.createElement('div');
-                div.className = `w-8 h-8 cursor-pointer border-2 border-transparent hover:scale-110 transition-transform ${color}`;
+                div.className = `w-8 h-8 cursor-pointer border-2 border-transparent hover:scale-110 transition-transform rounded-md ${color}`;
                 div.onclick = () => selectColor(color, div);
                 if (color === 'bg-blue-500') {
                     div.classList.add('border-gray-800');
@@ -936,7 +1040,7 @@
             document.getElementById('prod-color').value = colorClass;
             const container = document.getElementById('color-picker-container');
             Array.from(container.children).forEach(child => child.classList.remove('border-gray-800', 'border-white', 'shadow-outline'));
-            element.classList.add('border-gray-800');
+            if(element) element.classList.add('border-gray-800');
         }
 
         function openAddProductModal() {
@@ -950,7 +1054,7 @@
             document.getElementById('prod-color').value = defaultColor;
             const colors = document.getElementById('color-picker-container').children;
             if(colors.length > 0) {
-                 selectColor(defaultColor, colors[10]); 
+                 selectColor(defaultColor, Array.from(colors).find(c => c.className.includes(defaultColor))); 
             }
             openModal('modal-product');
         }
@@ -966,7 +1070,7 @@
             document.getElementById('prod-image-base64').value = product.image || '';
             
             const preview = document.getElementById('prod-img-preview');
-            if (product.image) {
+            if (product.image && product.image.trim() !== '') {
                 preview.innerHTML = `<img src="${product.image}" class="w-full h-full object-cover">`;
             } else {
                 preview.innerHTML = `<i class="fas fa-image text-2xl"></i>`;
@@ -984,77 +1088,77 @@
             openModal('modal-product');
         }
 
-        function saveProduct(event) {
+        async function saveProduct(event) {
             event.preventDefault();
+            const btn = document.getElementById('btn-save-product');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i> กำลังบันทึก...';
             
-            const id = document.getElementById('prod-id').value;
-            const name = document.getElementById('prod-name').value.trim();
-            const price = parseFloat(document.getElementById('prod-price').value);
-            const color = document.getElementById('prod-color').value;
-            const image = document.getElementById('prod-image-base64').value;
+            try {
+                const id = document.getElementById('prod-id').value;
+                const name = document.getElementById('prod-name').value.trim();
+                const price = parseFloat(document.getElementById('prod-price').value);
+                const color = document.getElementById('prod-color').value;
+                const image = document.getElementById('prod-image-base64').value;
 
-            if (!name || isNaN(price) || price < 0) {
-                customAlert("ข้อมูลไม่ถูกต้อง", "กรุณากรอกชื่อและราคาให้ถูกต้อง", "error");
-                return;
-            }
-
-            if (id) {
-                const index = products.findIndex(p => p.id === id);
-                if (index > -1) {
-                    products[index] = { id, name, price, color, image };
-                    showToast(`แก้ไขข้อมูล ${name} แล้ว`, 'success');
+                if (!name || isNaN(price) || price < 0) {
+                    customAlert("ข้อมูลไม่ถูกต้อง", "กรุณากรอกชื่อและราคาให้ถูกต้อง", "error");
+                    return;
                 }
-            } else {
-                const newProduct = {
-                    id: generateId(),
-                    name,
-                    price,
-                    color,
-                    image
-                };
-                products.push(newProduct);
-                showToast(`เพิ่ม ${name} แล้ว`, 'success');
-            }
 
-            saveProductsToStorage();
-            syncDataToServer('saveProducts', { products: products });
-            
-            renderProductsTable();
-            renderProductsInPOS();
-            closeModal('modal-product');
+                const productData = { name, price, color, image };
+
+                if (id) {
+                    // Update existing
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', id);
+                    await setDoc(docRef, productData, { merge: true });
+                    showToast(`แก้ไขข้อมูล ${name} แล้ว`, 'success');
+                } else {
+                    // Add new
+                    await addDoc(getProductsCollectionRef(), productData);
+                    showToast(`เพิ่ม ${name} แล้ว`, 'success');
+                }
+
+                closeModal('modal-product');
+            } catch (error) {
+                console.error("Save Product Error:", error);
+                customAlert("ข้อผิดพลาด", "ไม่สามารถบันทึกสินค้าได้", "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'บันทึกข้อมูล';
+            }
         }
 
         function deleteProduct(productId) {
             const product = products.find(p => p.id === productId);
             if (!product) return;
 
-            customConfirm("ยืนยันการลบ", `คุณต้องการลบ "${product.name}" ออกจากระบบใช่หรือไม่?`, () => {
-                products = products.filter(p => p.id !== productId);
-                saveProductsToStorage();
-                syncDataToServer('saveProducts', { products: products });
-                
-                renderProductsTable();
-                renderProductsInPOS();
-                
-                cart = cart.filter(item => item.product.id !== productId);
-                renderCart();
-                
-                showToast(`ลบ ${product.name} แล้ว`, 'info');
+            customConfirm("ยืนยันการลบ", `คุณต้องการลบ "${product.name}" ออกจากระบบใช่หรือไม่?<br><span class="text-xs text-red-500">จะส่งผลต่อทุกเครื่องทันที</span>`, async () => {
+                try {
+                    const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'products', productId);
+                    await deleteDoc(docRef);
+                    showToast(`ลบ ${product.name} แล้ว`, 'info');
+                } catch (error) {
+                    console.error("Delete Error:", error);
+                    customAlert("ลบล้มเหลว", "เกิดข้อผิดพลาดในการลบสินค้า", "error");
+                }
             });
         }
 
         function loadSummaryData() {
             const dateInput = document.getElementById('summary-date').value;
-            if (!dateInput) return; // รูปแบบ dateInput เป็น YYYY-MM-DD เช่น 2026-03-31
+            if (!dateInput) return; 
 
-            // แปลง dateInput เป็น DD/MM/YYYY เพื่อให้ตรงกับรูปแบบวันที่ใน Google Sheets
-            const parts = dateInput.split('-');
-            const formattedDateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
-
-            const dailyTransactions = cloudSummaryData.bills.filter(tx => {
+            // dateInput is 'YYYY-MM-DD'
+            // Filter allBills array directly in JS (Complies with Rule 2: Fetch all, filter locally)
+            const dailyTransactions = allBills.filter(tx => {
                 if (!tx.timestamp) return false;
-                const txDateStr = tx.timestamp.split(' ')[0]; // ดึงเฉพาะวันที่
-                return txDateStr === formattedDateStr;
+                try {
+                    const txDate = new Date(tx.timestamp);
+                    // Standardize local comparison
+                    const localTxDateStr = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}-${String(txDate.getDate()).padStart(2, '0')}`;
+                    return localTxDateStr === dateInput;
+                } catch(e) { return false; }
             });
             
             let totalRevenue = 0;
@@ -1103,13 +1207,15 @@
         }
 
         function downloadDailyCSV() {
-            const dateInput = document.getElementById('summary-date').value;
-            const parts = dateInput.split('-');
-            const formattedDateStr = `${parts[2]}/${parts[1]}/${parts[0]}`;
-
-            const dailyTransactions = cloudSummaryData.bills.filter(tx => {
+            const dateInput = document.getElementById('summary-date').value; // 'YYYY-MM-DD'
+            
+            const dailyTransactions = allBills.filter(tx => {
                 if (!tx.timestamp) return false;
-                return tx.timestamp.split(' ')[0] === formattedDateStr;
+                try {
+                    const txDate = new Date(tx.timestamp);
+                    const localTxDateStr = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}-${String(txDate.getDate()).padStart(2, '0')}`;
+                    return localTxDateStr === dateInput;
+                } catch(e) { return false; }
             });
 
             if (dailyTransactions.length === 0) {
@@ -1120,9 +1226,17 @@
             let csvContent = "\uFEFF"; 
             csvContent += "เลขบิล,คิว,เวลา,รายการสินค้า,ช่องทางชำระเงิน,ยอดรวม (บาท)\n";
 
-            dailyTransactions.forEach((tx, index) => {
+            // Sort transactions by time
+            const sortedTx = [...dailyTransactions].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+            sortedTx.forEach((tx, index) => {
                 const billNum = index + 1;
-                const timeStr = tx.timestamp.split(' ')[1] || '-';
+                let timeStr = '-';
+                if(tx.timestamp) {
+                    const d = new Date(tx.timestamp);
+                    timeStr = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+                }
+
                 const queueNo = tx.queue || '-';
                 const payment = tx.paymentMethod;
                 
@@ -1270,7 +1384,8 @@
             container.classList.remove('hidden');
             emptyState.classList.add('hidden');
 
-            const sortedTx = [...transactions].reverse();
+            // Sort newest first
+            const sortedTx = [...transactions].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
 
             sortedTx.forEach((tx, index) => {
                 const billNum = transactions.length - index;
@@ -1288,10 +1403,16 @@
                     ? '<i class="fas fa-qrcode text-blue-500 mr-1" title="พร้อมเพย์"></i>' 
                     : '<i class="fas fa-money-bill-wave text-green-500 mr-1" title="เงินสด"></i>';
 
+                let timeDisplay = '-';
+                if(tx.timestamp) {
+                    const d = new Date(tx.timestamp);
+                    timeDisplay = `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')} น.`;
+                }
+
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-1 border-b border-dashed border-gray-200 pb-2">
                         <span class="font-bold text-gray-700">บิล #${billNum} <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded ml-2">คิว ${tx.queue || '-'}</span></span>
-                        <span class="text-xs text-gray-500"><i class="far fa-clock mr-1"></i>${tx.timestamp.split(' ')[1] || ''}</span>
+                        <span class="text-xs text-gray-500"><i class="far fa-clock mr-1"></i>${timeDisplay}</span>
                     </div>
                     ${itemsListHtml}
                     <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
@@ -1409,7 +1530,12 @@
             }, 3000);
         }
 
-        document.addEventListener('DOMContentLoaded', initApp);
+        // Initialize App on DOM Content Loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
 
     </script>
 </body>
