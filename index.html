@@ -816,8 +816,25 @@
                 paymentMethod: paymentType
             };
 
-            // ส่งข้อมูลบิลไปบันทึกที่ Google Sheet กลาง
-            await syncDataToServer('saveBill', {
+            // ปิด Modal ทันทีเพื่อให้ผู้ใช้งานไม่รู้สึกหน่วง
+            cart = [];
+            renderCart();
+            closeModal('modal-checkout');
+
+            currentQueue++;
+            if (currentQueue > 50) currentQueue = 1;
+            queueInput.value = currentQueue;
+
+            let msg = `ชำระเงินสำเร็จ (ยอด: ${formatCurrency(currentCheckoutTotal)})`;
+            if (paymentType === 'promptpay') {
+                msg = `รับชำระด้วยพร้อมเพย์สำเร็จ<br><span class="font-bold text-green-300">ยอด: ${formatCurrency(currentCheckoutTotal)}</span>`;
+            } else if (change > 0) {
+                msg += `<br><span class="font-bold text-lg text-yellow-300">เงินทอน: ${formatCurrency(change)}</span>`;
+            }
+            showToast(msg, 'success');
+
+            // ส่งข้อมูลไปบันทึกที่ Google Sheet แบบเบื้องหลัง (ไม่บล็อกหน้าจอ)
+            syncDataToServer('saveBill', {
                 billId: transaction.id,
                 queue: transaction.queue,
                 total: transaction.total,
@@ -828,22 +845,7 @@
                     total: item.total
                 }))
             });
-
-            currentQueue++;
-            if (currentQueue > 50) currentQueue = 1;
-            queueInput.value = currentQueue;
-
-            cart = [];
-            renderCart();
-            closeModal('modal-checkout');
-            
-            let msg = `ชำระเงินสำเร็จ (ยอด: ${formatCurrency(currentCheckoutTotal)})`;
-            if (paymentType === 'promptpay') {
-                msg = `รับชำระด้วยพร้อมเพย์สำเร็จ<br><span class="font-bold text-green-300">ยอด: ${formatCurrency(currentCheckoutTotal)}</span>`;
-            } else if (change > 0) {
-                msg += `<br><span class="font-bold text-lg text-yellow-300">เงินทอน: ${formatCurrency(change)}</span>`;
-            }
-            showToast(msg, 'success');
+    
         }
 
         function renderProductsTable(searchQuery = '') {
