@@ -214,8 +214,9 @@
                     </div>
 
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col h-[500px]">
-                        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50 shrink-0">
-                            <h3 class="font-bold text-gray-800"><i class="fas fa-receipt mr-2 text-green-500"></i>ประวัติการขาย (แยกตามบิล)</h3>
+                        <div class="px-5 py-4 border-b border-gray-200 bg-gray-50 shrink-0 flex justify-between items-center">
+                            <h3 class="font-bold text-gray-800"><i class="fas fa-receipt mr-2 text-green-500"></i>ประวัติการขาย (เรียงตามเวลาล่าสุด)</h3>
+                            <span class="text-xs text-gray-500">ล่าสุดอยู่ด้านบน</span>
                         </div>
                         <div class="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3" id="summary-bills-container"></div>
                         <div id="summary-bills-empty" class="hidden h-full flex flex-col items-center justify-center text-gray-400 bg-white">
@@ -620,7 +621,7 @@
 
             const now = new Date();
             const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-            const timeStr = now.toTimeString().split(' ')[0].substring(0, 5);
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
 
             const newBill = {
                 queue: queueNo,
@@ -773,7 +774,27 @@
 
         function loadSummaryData() {
             const selectedDate = document.getElementById('summary-date').value;
-            const filteredBills = bills.filter(b => b.date === selectedDate);
+            
+            // 1. กรองบิลเฉพาะวันที่เลือก
+            let filteredBills = bills.filter(b => b.date === selectedDate);
+
+            // 2. เรียงลำดับประวัติการขายตามเวลาจริง (เวลาล่าสุดอยู่บนสุดเสมอ)
+            filteredBills.sort((a, b) => {
+                const getTimeValue = (bill) => {
+                    if (bill.createdAt && bill.createdAt.seconds) {
+                        return bill.createdAt.seconds; // ใช้ Timestamp จริงจาก Firebase
+                    }
+                    return bill.time || ''; // สำรองด้วยเวลาสตริง HH:mm:ss
+                };
+
+                const valA = getTimeValue(a);
+                const valB = getTimeValue(b);
+
+                if (typeof valA === 'number' && typeof valB === 'number') {
+                    return valB - valA; // เรียงลำดับจากมากไปน้อย (ล่าสุดอยู่บนสุด)
+                }
+                return String(valB).localeCompare(String(valA));
+            });
 
             let totalRev = 0, totalCash = 0, totalPromptpay = 0, totalItems = 0;
             const itemMap = {};
@@ -840,9 +861,10 @@
             container.classList.remove('hidden');
             emptyState.classList.add('hidden');
 
-            filteredBills.slice().reverse().forEach((b, idx) => {
+            filteredBills.forEach((b) => {
                 const card = document.createElement('div');
-                card.className = 'bg-white p-4 rounded-lg shadow-sm border border-gray-100 text-sm';
+                card.className = 'bg-white p-4 rounded-lg shadow-sm border border-gray-100 text-sm hover:border-gray-200 transition-colors';
+                
                 let itemsListHtml = '<ul class="mt-2 mb-2 text-xs text-gray-600 border-l-2 border-gray-200 pl-2 space-y-1">';
                 (b.items || []).forEach(i => {
                     itemsListHtml += `<li>${i.qty}x ${i.name} <span class="float-right text-gray-500">${formatCurrency(i.total)}</span></li>`;
@@ -851,17 +873,46 @@
 
                 card.innerHTML = `
                     <div class="flex justify-between items-center mb-1 border-b border-dashed border-gray-200 pb-2">
-                        <span class="font-bold text-gray-700">บิล #${filteredBills.length - idx} <span class="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded ml-2">คิว ${b.queue || '-'}</span></span>
-                        <span class="text-xs text-gray-500"><i class="far fa-clock mr-1"></i>${b.time || ''}</span>
+                        <div class="flex items-center gap-2">
+                            <span class="font-bold text-gray-700">คิว ${b.queue || '-'}</span>
+                            <span class="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-medium">${b.paymentMethod || 'เงินสด'}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500 font-mono"><i class="far fa-clock mr-1"></i>${b.time || ''}</span>
+                            <button onclick="deleteBill('${b.id}')" class="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors" title="ลบบิลนี้">
+                                <i class="fas fa-trash-alt text-xs"></i>
+                            </button>
+                        </div>
                     </div>
                     ${itemsListHtml}
                     <div class="flex justify-between items-center mt-2 pt-2 border-t border-gray-100">
-                        <span class="text-gray-500">${b.paymentMethod === 'พร้อมเพย์' ? '<i class="fas fa-qrcode text-blue-500 mr-1"></i>พร้อมเพย์' : '<i class="fas fa-money-bill-wave text-green-500 mr-1"></i>เงินสด'}</span>
+                        <span class="text-gray-500 text-xs">${b.paymentMethod === 'พร้อมเพย์' ? '<i class="fas fa-qrcode text-blue-500 mr-1"></i>พร้อมเพย์' : '<i class="fas fa-money-bill-wave text-green-500 mr-1"></i>เงินสด'}</span>
                         <span class="font-bold text-blue-600 text-base">${formatCurrency(b.total)}</span>
                     </div>
                 `;
                 container.appendChild(card);
             });
+        }
+
+        /* --- ฟังก์ชันสำหรับลบบิลประวัติการขาย --- */
+        function deleteBill(billId) {
+            const bill = bills.find(b => b.id === billId);
+            if (!bill) return;
+
+            customConfirm(
+                "ยืนยันการลบบิล", 
+                `คุณต้องการลบบิลคิวที่ <b>${bill.queue || '-'}</b> (เวลา ${bill.time || ''} - ยอด ${formatCurrency(bill.total)}) ใช่หรือไม่?`, 
+                async () => {
+                    try {
+                        await db.collection("bills").doc(billId).delete();
+                        showToast("ลบบิลประวัติการขายเรียบร้อยแล้ว", "info");
+                    } catch (err) {
+                        console.error("Delete Bill Error:", err);
+                        customAlert("ข้อผิดพลาด", "ไม่สามารถลบบิลได้", "error");
+                    }
+                }, 
+                true
+            );
         }
 
         function renderChart(itemsArray) {
@@ -907,7 +958,7 @@
 
             let csv = "\uFEFFเลขบิล,คิว,เวลา,รายการสินค้า,ช่องทางชำระเงิน,ยอดรวม (บาท)\n";
             filtered.forEach((b, idx) => {
-                const itemsDesc = b.items.map(i => `${i.qty}x ${i.name}`).join(' | ');
+                const itemsDesc = (b.items || []).map(i => `${i.qty}x ${i.name}`).join(' | ');
                 csv += `บิล #${idx + 1},${b.queue || '-'},${b.time || '-'},"${itemsDesc}",${b.paymentMethod},${b.total}\n`;
             });
 
