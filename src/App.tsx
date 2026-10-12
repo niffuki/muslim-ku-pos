@@ -235,7 +235,7 @@ export default function App() {
     reader.readAsDataURL(file)
   }
 
-  return <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-gray-50 text-gray-800">
+  return <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-gray-50 text-gray-800">
     <header className="z-10 flex shrink-0 flex-wrap items-center justify-between gap-2 bg-blue-600 px-3 py-2 text-white shadow-md sm:flex-nowrap sm:px-4">
       <div className="flex items-center gap-3"><div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/15 text-xl">🧾</div><div><h1 className="text-lg font-bold tracking-tight">Muslim KU POS</h1><p className="text-xs text-blue-100">Point of Sale · ระบบขายหน้าร้าน</p></div><span className={'rounded-full px-3 py-1 text-xs ' + (cloudStatus === 'เชื่อมต่อคลาวด์แล้ว' ? 'bg-green-800 text-green-100' : 'bg-blue-800 text-blue-100')}>● {cloudStatus}</span></div>
       <nav className="flex gap-1 rounded-xl bg-blue-700/60 p-1">
